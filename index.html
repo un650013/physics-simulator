@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>전자기 유도 가상 실험 시뮬레이션</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        html, body {
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col justify-between p-2">
+
+    <header class="bg-white shadow-sm rounded-xl px-3 py-1.5 mb-1.5 flex justify-between items-center shrink-0">
+        <div>
+            <h1 class="text-xs font-bold text-slate-800">⚡ [통합과학 수행평가] 패러데이 법칙에 따른 전자기 유도 가상 실험</h1>
+            <p class="text-[10px] text-slate-500">
+                원리: <span class="text-indigo-600 font-semibold">자석 세기 증가 → 자기장 변화 증가 → 유도 전압 증가</span> 
+                <span class="text-slate-400 ml-1">(※ 교육용 시뮬레이션 값)</span>
+            </p>
+        </div>
+        <button id="downloadBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg shadow transition">
+            📥 HTML 파일 다운로드
+        </button>
+    </header>
+
+    <main class="grid grid-cols-12 gap-2 flex-1 min-h-0 mb-1">
+        
+        <section class="col-span-7 flex flex-col gap-1.5 min-h-0">
+            <div class="bg-white rounded-xl shadow-sm p-2 flex flex-col items-center justify-center relative shrink-0">
+                <div class="absolute top-1 left-2.5 text-[11px] font-bold text-slate-600">실험 뷰 (자석과 입체 코일)</div>
+                <canvas id="simCanvas" width="550" height="120" class="border border-slate-100 rounded-lg bg-slate-50 mt-4"></canvas>
+                <div class="text-[10px] text-slate-400 mt-0.5">※ 코일 감은 횟수 및 이동 속도는 일정하며, 자석 세기와 극성만 변화합니다.</div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-2.5 flex flex-col justify-between flex-1 min-h-0">
+                <h2 class="text-[11px] font-bold text-slate-700 mb-1">🎛️ 실험 조건 설정</h2>
+                
+                <div class="grid grid-cols-2 gap-2 mb-1.5">
+                    <div>
+                        <label class="block text-[10px] font-medium text-slate-600 mb-0.5">자석의 세기 (1 ~ 5):</label>
+                        <div class="flex justify-between gap-1" id="strengthButtons">
+                            <button type="button" data-val="1" class="strength-btn flex-1 py-1 text-xs font-bold rounded border border-indigo-600 text-indigo-600 bg-indigo-50 transition">1</button>
+                            <button type="button" data-val="2" class="strength-btn flex-1 py-1 text-xs font-bold rounded border border-slate-300 text-slate-600 hover:bg-slate-50 transition">2</button>
+                            <button type="button" data-val="3" class="strength-btn flex-1 py-1 text-xs font-bold rounded border border-slate-300 text-slate-600 hover:bg-slate-50 transition">3</button>
+                            <button type="button" data-val="4" class="strength-btn flex-1 py-1 text-xs font-bold rounded border border-slate-300 text-slate-600 hover:bg-slate-50 transition">4</button>
+                            <button type="button" data-val="5" class="strength-btn flex-1 py-1 text-xs font-bold rounded border border-slate-300 text-slate-600 hover:bg-slate-50 transition">5</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-medium text-slate-600 mb-0.5">자석의 극성 진입 방향:</label>
+                        <div class="flex gap-1.5">
+                            <button type="button" id="poleNBtn" class="flex-1 py-1 text-[11px] font-bold rounded border border-red-500 bg-red-50 text-red-600 transition">N극 먼저 진입</button>
+                            <button type="button" id="poleSBtn" class="flex-1 py-1 text-[11px] font-bold rounded border border-slate-300 text-slate-600 hover:bg-slate-50 transition">S극 먼저 진입</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button id="runBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 rounded-lg shadow transition flex items-center justify-center gap-1">
+                        ▶ 선택한 조건으로 실험하기
+                    </button>
+                    <button id="resetBtn" class="px-3 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition">
+                        전체 초기화
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="col-span-5 flex flex-col gap-1.5 min-h-0">
+            <div class="bg-white rounded-xl shadow-sm p-2.5 flex flex-col flex-1 min-h-0 relative">
+                <div class="flex justify-between items-center mb-0.5">
+                    <h2 class="text-[11px] font-bold text-slate-700">📈 유도 전압 파형 비교</h2>
+                    <span class="text-[9px] text-slate-400">패러데이 법칙 적용</span>
+                </div>
+                <div class="flex-1 w-full min-h-0 relative pt-1">
+                    <canvas id="voltageChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-2 flex flex-col shrink-0">
+                <h2 class="text-[11px] font-bold text-slate-700 mb-1 flex justify-between items-center">
+                    <span>📋 실험 결과 기록 표</span>
+                    <span class="text-[10px] text-slate-400 font-normal">세기별 결과 누적 비교</span>
+                </h2>
+                <div class="border border-slate-100 rounded-lg overflow-hidden">
+                    <table class="w-full text-left border-collapse text-[11px]">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="py-1 px-2 border-b border-slate-100 font-semibold text-center">자석 세기</th>
+                                <th class="py-1 px-2 border-b border-slate-100 font-semibold text-center">진입 극성</th>
+                                <th class="py-1 px-2 border-b border-slate-100 font-semibold text-center">최대 전압</th>
+                                <th class="py-1 px-2 border-b border-slate-100 font-semibold text-center">최소 전압</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultTableBody" class="text-slate-700">
+                            <tr class="text-slate-400 text-center">
+                                <td colspan="4" class="py-3 text-[11px]">실험 데이터를 기록하려면 '실험하기'를 누르세요.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        let selectedStrength = 1;
+        let selectedPole = 'N';
+        let experimentHistory = [];
+        let allExperimentDatasets = [];
+        let isAnimating = false;
+
+        const strengthColors = {
+            1: '#3b82f6',
+            2: '#06b6d4',
+            3: '#10b981',
+            4: '#f59e0b',
+            5: '#ef4444'
+        };
+
+        const strengthBtns = document.querySelectorAll('.strength-btn');
+        const poleNBtn = document.getElementById('poleNBtn');
+        const poleSBtn = document.getElementById('poleSBtn');
+        const runBtn = document.getElementById('runBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const resultTableBody = document.getElementById('resultTableBody');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        strengthBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                strengthBtns.forEach(b => {
+                    b.classList.remove('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+                    b.classList.add('border-slate-300', 'text-slate-600');
+                });
+                btn.classList.remove('border-slate-300', 'text-slate-600');
+                btn.classList.add('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+                selectedStrength = parseInt(btn.getAttribute('data-val'));
+            });
+        });
+
+        poleNBtn.addEventListener('click', () => {
+            selectedPole = 'N';
+            poleNBtn.className = "flex-1 py-1 text-[11px] font-bold rounded border border-red-500 bg-red-50 text-red-600 transition";
+            poleSBtn.className = "flex-1 py-1 text-[11px] font-bold rounded border border-slate-300 text-slate-600 hover:bg-slate-50 transition";
+        });
+        poleSBtn.addEventListener('click', () => {
+            selectedPole = 'S';
+            poleSBtn.className = "flex-1 py-1 text-[11px] font-bold rounded border border-blue-500 bg-blue-50 text-blue-600 transition";
+            poleNBtn.className = "flex-1 py-1 text-[11px] font-bold rounded border border-slate-300 text-slate-600 hover:bg-slate-50 transition";
+        });
+
+        const ctx = document.getElementById('voltageChart').getContext('2d');
+        const voltageChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: '시간 (s)', font: { size: 9 } },
+                        ticks: { font: { size: 8 } },
+                        grid: { color: '#f1f5f9' }
+                    },
+                    y: {
+                        title: { display: true, text: '유도 전압 (V)', font: { size: 9 } },
+                        ticks: { font: { size: 8 } },
+                        suggestedMin: -6.5,
+                        suggestedMax: 6.5,
+                        grid: { color: '#f1f5f9' }
+                    }
+                },
+                plugins: {
+                    legend: { position: 'top', labels: { boxWidth: 10, font: { size: 9 } } }
+                }
+            }
+        });
+
+        const simCanvas = document.getElementById('simCanvas');
+        const sCtx = simCanvas.getContext('2d');
+
+        function drawSimulation(magnetX) {
+            sCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
+            const coilX = 275;
+            const coilY = 60;
+            const coilRadiusY = 22;
+            const coilTurns = 7;
+            const coilSpacing = 10;
+
+            sCtx.strokeStyle = '#b45309';
+            sCtx.lineWidth = 2.5;
+            for(let i = 0; i < coilTurns; i++) {
+                let cx = coilX + (i * coilSpacing) - 30;
+                sCtx.beginPath();
+                sCtx.arc(cx, coilY, coilRadiusY, Math.PI * 0.15, Math.PI * 0.85, false);
+                sCtx.stroke();
+            }
+
+            sCtx.fillStyle = 'rgba(241, 245, 249, 0.6)';
+            sCtx.fillRect(coilX - 35, coilY - coilRadiusY - 2, 75, coilRadiusY * 2 + 4);
+            sCtx.strokeStyle = '#cbd5e1';
+            sCtx.lineWidth = 1;
+            sCtx.strokeRect(coilX - 35, coilY - coilRadiusY - 2, 75, coilRadiusY * 2 + 4);
+
+            sCtx.strokeStyle = '#d97706';
+            sCtx.lineWidth = 3;
+            for(let i = 0; i < coilTurns; i++) {
+                let cx = coilX + (i * coilSpacing) - 30;
+                sCtx.beginPath();
+                sCtx.arc(cx, coilY, coilRadiusY, Math.PI * 0.85, Math.PI * 2.15, false);
+                sCtx.stroke();
+            }
+
+            sCtx.strokeStyle = '#b45309';
+            sCtx.lineWidth = 2;
+            sCtx.beginPath();
+            sCtx.moveTo(coilX - 30, coilY - coilRadiusY);
+            sCtx.lineTo(coilX - 30, coilY + 35);
+            sCtx.lineTo(coilX - 20, coilY + 35);
+            sCtx.stroke();
+
+            sCtx.beginPath();
+            let lastCx = coilX + ((coilTurns - 1) * coilSpacing) - 30;
+            sCtx.moveTo(lastCx, coilY - coilRadiusY);
+            sCtx.lineTo(lastCx, coilY + 35);
+            sCtx.lineTo(coilX + 20, coilY + 35);
+            sCtx.stroke();
+
+            sCtx.fillStyle = '#ffffff';
+            sCtx.fillRect(coilX - 22, coilY + 27, 44, 18);
+            sCtx.strokeStyle = '#64748b';
+            sCtx.lineWidth = 1.5;
+            sCtx.strokeRect(coilX - 22, coilY + 27, 44, 18);
+            
+            sCtx.fillStyle = '#1e293b';
+            sCtx.font = 'bold 9px sans-serif';
+            sCtx.textAlign = 'center';
+            sCtx.fillText('V-METER', coilX, coilY + 39);
+
+            const magWidth = 80;
+            const magHeight = 28;
+            sCtx.save();
+            sCtx.translate(magnetX, coilY - magHeight / 2);
+
+            if (selectedPole === 'N') {
+                sCtx.fillStyle = '#ef4444';
+                sCtx.fillRect(0, 0, magWidth / 2, magHeight);
+                sCtx.fillStyle = '#3b82f6';
+                sCtx.fillRect(magWidth / 2, 0, magWidth / 2, magHeight);
+
+                sCtx.fillStyle = '#ffffff';
+                sCtx.font = 'bold 11px sans-serif';
+                sCtx.textAlign = 'center';
+                sCtx.fillText('N', magWidth / 4, magHeight / 2 + 4);
+                sCtx.fillText('S', (magWidth / 4) * 3, magHeight / 2 + 4);
+            } else {
+                sCtx.fillStyle = '#3b82f6';
+                sCtx.fillRect(0, 0, magWidth / 2, magHeight);
+                sCtx.fillStyle = '#ef4444';
+                sCtx.fillRect(magWidth / 2, 0, magWidth / 2, magHeight);
+
+                sCtx.fillStyle = '#ffffff';
+                sCtx.font = 'bold 11px sans-serif';
+                sCtx.textAlign = 'center';
+                sCtx.fillText('S', magWidth / 4, magHeight / 2 + 4);
+                sCtx.fillText('N', (magWidth / 4) * 3, magHeight / 2 + 4);
+            }
+
+            sCtx.strokeStyle = '#0f172a';
+            sCtx.lineWidth = 1.5;
+            sCtx.strokeRect(0, 0, magWidth, magHeight);
+            sCtx.restore();
+
+            sCtx.fillStyle = '#1e293b';
+            sCtx.font = 'bold 11px sans-serif';
+            sCtx.textAlign = 'left';
+            sCtx.fillText(`자석 세기: Lv.${selectedStrength} (${selectedPole}극 진입)`, 12, 18);
+        }
+
+        drawSimulation(100);
+
+        function generateWaveformData(strength, pole) {
+            const points = 41;
+            const timeLabels = [];
+            const voltages = [];
+            const peakVal = strength * 1.0;
+            const directionMultiplier = (pole === 'N') ? 1 : -1;
+
+            for (let i = 0; i < points; i++) {
+                let t = (i * 0.1).toFixed(1);
+                timeLabels.push(t);
+                let v = peakVal * directionMultiplier * (
+                    Math.exp(-Math.pow(t - 1.3, 2) / 0.12) * 1.2 - 
+                    Math.exp(-Math.pow(t - 2.7, 2) / 0.12) * 1.2
+                );
+                if (i === 0 || i === points - 1) v = 0;
+                voltages.push(parseFloat(v.toFixed(2)));
+            }
+            return { labels: timeLabels, data: voltages };
+        }
+
+        runBtn.addEventListener('click', () => {
+            if (isAnimating) return;
+            isAnimating = true;
+            runBtn.disabled = true;
+            runBtn.classList.add('opacity-50');
+
+            let startX = 60;
+            let endX = 410;
+            let currentX = startX;
+            let totalFrames = 120;
+            let frameCount = 0;
+
+            const wave = generateWaveformData(selectedStrength, selectedPole);
+            const maxV = Math.max(...wave.data);
+            const minV = Math.min(...wave.data);
+
+            function animateStep() {
+                frameCount++;
+                let progress = frameCount / totalFrames;
+                if (progress <= 0.5) {
+                    currentX = startX + (endX - startX) * (progress * 2);
+                } else {
+                    currentX = endX - (endX - startX) * ((progress - 0.5) * 2);
+                }
+
+                drawSimulation(currentX);
+                let currentIdxCount = Math.floor((frameCount / totalFrames) * wave.labels.length);
+                currentIdxCount = Math.max(1, Math.min(currentIdxCount, wave.labels.length));
+                updateChartWithProgress(wave, currentIdxCount, selectedStrength, selectedPole);
+
+                if (frameCount < totalFrames) {
+                    requestAnimationFrame(animateStep);
+                } else {
+                    isAnimating = false;
+                    runBtn.disabled = false;
+                    runBtn.classList.remove('opacity-50');
+                    addResultToTable(selectedStrength, selectedPole, maxV, minV);
+                }
+            }
+
+            requestAnimationFrame(animateStep);
+        });
+
+        function updateChartWithProgress(wave, count, strength, pole) {
+            let datasetLabel = `세기 Lv.${strength} (${pole}극)`;
+            let existingDataset = allExperimentDatasets.find(d => d.label === datasetLabel);
+
+            let partialData = wave.data.slice(0, count);
+            while(partialData.length < wave.labels.length) {
+                partialData.push(null);
+            }
+
+            if (!existingDataset) {
+                existingDataset = {
+                    label: datasetLabel,
+                    data: partialData,
+                    borderColor: strengthColors[strength],
+                    backgroundColor: strengthColors[strength],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.3
+                };
+                allExperimentDatasets.push(existingDataset);
+            } else {
+                existingDataset.data = partialData;
+            }
+
+            voltageChart.data.labels = wave.labels;
+            voltageChart.data.datasets = [...allExperimentDatasets];
+            voltageChart.update();
+        }
+
+        function addResultToTable(strength, pole, maxV, minV) {
+            let existing = experimentHistory.find(item => item.strength === strength && item.pole === pole);
+            if (existing) {
+                existing.maxV = maxV;
+                existing.minV = minV;
+            } else {
+                experimentHistory.push({ strength, pole, maxV, minV });
+            }
+
+            experimentHistory.sort((a, b) => a.strength - b.strength);
+
+            resultTableBody.innerHTML = '';
+            experimentHistory.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = "border-b border-slate-100 hover:bg-slate-50 transition";
+                row.innerHTML = `
+                    <td class="py-1 px-2 font-semibold text-indigo-600 text-center">Lv. ${item.strength}</td>
+                    <td class="py-1 px-2 text-center">${item.pole}극 진입</td>
+                    <td class="py-1 px-2 font-bold text-red-500 text-center">+${item.maxV.toFixed(2)} V</td>
+                    <td class="py-1 px-2 font-bold text-blue-500 text-center">${item.minV.toFixed(2)} V</td>
+                `;
+                resultTableBody.appendChild(row);
+            });
+        }
+
+        resetBtn.addEventListener('click', () => {
+            experimentHistory = [];
+            allExperimentDatasets = [];
+            resultTableBody.innerHTML = `<tr class="text-slate-400 text-center"><td colspan="4" class="py-3 text-[11px]">실험 데이터를 기록하려면 '실험하기'를 누르세요.</td></tr>`;
+            voltageChart.data.labels = [];
+            voltageChart.data.datasets = [];
+            voltageChart.update();
+            drawSimulation(100);
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const htmlContent = document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '전자기_유도_가상실험_시뮬레이션.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+</html>
